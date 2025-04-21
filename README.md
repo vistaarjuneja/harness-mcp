@@ -1,6 +1,6 @@
-# harness-mcp MCP server
+# Harness MCP Server
 
-MCP server for Harness
+The Harness MCP Server is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that provides seamless integration with Harness APIs, enabling advanced automation and interaction capabilities for developers and tools.
 
 ## Components
 
@@ -11,111 +11,99 @@ The server implements one tool:
   - Takes "connector_type", "connector_names", and "connector_ids" as optional arguments
   - Returns a list of connectors in JSON format
 
-## To do
+## Prerequisites
 
-We need to figure out a good way to handle auth, it's just hardcoded for this POC.
+1. You will need to have Go 1.23 or later installed on your system.
+2. A Harness API key for authentication.
 
 ## Quickstart
 
-### Install
+### Build from source
 
-#### Virtual Environment Setup
-
-1. Create a virtual environment (already done):
+1. Clone the repository:
 ```bash
-python -m venv venv
+git clone https://github.com/yourusername/harness-mcp.git
+cd harness-mcp
 ```
 
-2. Activate the virtual environment:
+2. Build the binary:
 ```bash
-# On macOS/Linux
-source venv/bin/activate
-
-# On Windows
-venv\Scripts\activate
+go build -o harness-mcp-server ./cmd/harness-mcp-server
 ```
 
-3. Install dependencies:
+3. Run the server:
 ```bash
-pip install -r requirements.txt
+HARNESS_API_KEY=your_api_key ./harness-mcp-server stdio
 ```
 
-4. Configure your API key by updating the `.env` file with your Harness API key.
+### Claude Desktop Configuration
 
-#### Claude Desktop
-
-On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
+On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`  
 On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 <details>
-  <summary>Development/Unpublished Servers Configuration</summary>
-  ```
-  "mcpServers": {
-    "harness-mcp": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "<path-to-harness-mcp>",
-        "run",
-        "harness-mcp"
-      ]
+  <summary>Server Configuration</summary>
+  
+  ```json
+  {
+    "mcpServers": {
+      "harness": {
+        "command": "/path/to/harness-mcp-server",
+        "args": ["stdio"],
+        "env": {
+          "HARNESS_API_KEY": "<YOUR_API_KEY>"
+        }
+      }
     }
   }
   ```
 </details>
 
-<details>
-  <summary>Published Servers Configuration</summary>
-  ```
-  "mcpServers": {
-    "harness-mcp": {
-      "command": "uvx",
-      "args": [
-        "harness-mcp"
-      ]
-    }
-  }
-  ```
-</details>
+## Usage with Claude Code
+
+```bash
+HARNESS_API_KEY=your_api_key /path/to/harness-mcp-server stdio
+```
 
 ## Development
 
-### Building and Publishing
+### Command Line Arguments
 
-To prepare the package for distribution:
+The Harness MCP Server supports the following command line arguments:
 
-1. Sync dependencies and update lockfile:
-```bash
-uv sync
-```
+- `--toolsets`: Comma-separated list of tool groups to enable (default: "all")
+- `--read-only`: Run the server in read-only mode
+- `--log-file`: Path to log file for debugging
+- `--enable-command-logging`: Enable logging of all commands
+- `--version`: Show version information
+- `--help`: Show help message
 
-2. Build package distributions:
-```bash
-uv build
-```
+### Environment Variables
 
-This will create source and wheel distributions in the `dist/` directory.
+Environment variables are prefixed with `HARNESS_`:
 
-3. Publish to PyPI:
-```bash
-uv publish
-```
+- `HARNESS_API_KEY`: Harness API key
+- `HARNESS_TOOLSETS`: Comma-separated list of toolsets to enable
+- `HARNESS_READ_ONLY`: Set to "true" to run in read-only mode
+- `HARNESS_LOG_FILE`: Path to log file
+- `HARNESS_ENABLE_COMMAND_LOGGING`: Set to "true" to enable command logging
 
-Note: You'll need to set PyPI credentials via environment variables or command flags:
-- Token: `--token` or `UV_PUBLISH_TOKEN`
-- Or username/password: `--username`/`UV_PUBLISH_USERNAME` and `--password`/`UV_PUBLISH_PASSWORD`
+### Authentication
 
-### Debugging
+The server uses a Harness API key for authentication. This can be set via the `HARNESS_API_KEY` environment variable.
 
-Since MCP servers run over stdio, debugging can be challenging. For the best debugging
-experience, we strongly recommend using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
+## Debugging
 
+Since MCP servers run over stdio, debugging can be challenging. For the best debugging experience, we strongly recommend using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
 
-You can launch the MCP Inspector via [`npm`](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) with this command:
+You can launch the MCP Inspector with this command:
 
 ```bash
-npx @modelcontextprotocol/inspector uv --directory <path-to-harness-mcp> run harness-mcp
+npx @modelcontextprotocol/inspector /path/to/harness-mcp-server stdio
 ```
-
 
 Upon launching, the Inspector will display a URL that you can access in your browser to begin debugging.
+
+## To do
+
+We need to figure out a good way to handle auth configuration, it's just hardcoded for this POC.

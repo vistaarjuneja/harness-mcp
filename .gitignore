@@ -84,3 +84,7 @@ cover/
 *.swp
 *.swo
 *~
+
+# Go binaries
+harness-mcp-server
+*.exe
