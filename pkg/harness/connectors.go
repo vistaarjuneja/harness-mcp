@@ -14,22 +14,10 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// Base URL for Harness API
-const baseURL = "https://app.harness.io/ng/api"
-
-// Default account, org, and project identifiers
-// In a real implementation, these would be configurable
-// TODO: remove these
-const (
-	defaultAccountID = "wFHXHD0RRQWoO8tIZT5YVw"
-	defaultOrgID     = "default"
-	defaultProjectID = "nitisha"
-)
-
 // ConnectorClient provides methods to interact with Harness API for connectors
 type ConnectorClient struct {
 	httpClient *http.Client
-	baseURL    string
+	config     *Config
 }
 
 // NewConnectorClient creates a new connector client
@@ -38,7 +26,7 @@ func NewConnectorClient() *ConnectorClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		baseURL: baseURL,
+		config: NewConfig(),
 	}
 }
 
@@ -61,9 +49,9 @@ func (c *ConnectorClient) ListConnectors(ctx context.Context, connectorNames []s
 
 	// Construct the query parameters
 	params := url.Values{}
-	params.Add("accountIdentifier", defaultAccountID)
-	params.Add("orgIdentifier", defaultOrgID)
-	params.Add("projectIdentifier", defaultProjectID)
+	params.Add("accountIdentifier", c.config.AccountID)
+	params.Add("orgIdentifier", c.config.OrgID)
+	params.Add("projectIdentifier", c.config.ProjectID)
 	params.Add("getDefaultFromOtherRepo", "true")
 	params.Add("getDistinctFromBranches", "true")
 	params.Add("onlyFavorites", "false")
@@ -87,7 +75,7 @@ func (c *ConnectorClient) ListConnectors(ctx context.Context, connectorNames []s
 	}
 
 	// Create a new HTTP request
-	url := fmt.Sprintf("%s/connectors/listV2?%s", c.baseURL, params.Encode())
+	url := fmt.Sprintf("%s/connectors/listV2?%s", c.config.BaseURL, params.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(reqBodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
