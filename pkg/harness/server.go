@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -20,7 +19,7 @@ func NewServer(version string, opts ...server.ServerOption) *server.MCPServer {
 
 	// Create a new MCP server
 	s := server.NewMCPServer(
-		"harness-mcp-server", 
+		"harness-mcp-server",
 		version,
 		opts...,
 	)
@@ -91,6 +90,31 @@ func OptionalParam[T any](r mcp.CallToolRequest, p string) (T, error) {
 	return r.Params.Arguments[p].(T), nil
 }
 
+// OptionalIntParam is a helper function that can be used to fetch a requested parameter from the request.
+// It does the following checks:
+// 1. Checks if the parameter is present in the request, if not, it returns its zero-value
+// 2. If it is present, it checks if the parameter is of the expected type and returns it
+func OptionalIntParam(r mcp.CallToolRequest, p string) (int, error) {
+	v, err := OptionalParam[float64](r, p)
+	if err != nil {
+		return 0, err
+	}
+	return int(v), nil
+}
+
+// OptionalIntParamWithDefault is a helper function that can be used to fetch a requested parameter from the request
+// similar to optionalIntParam, but it also takes a default value.
+func OptionalIntParamWithDefault(r mcp.CallToolRequest, p string, d int) (int, error) {
+	v, err := OptionalIntParam(r, p)
+	if err != nil {
+		return 0, err
+	}
+	if v == 0 {
+		return d, nil
+	}
+	return v, nil
+}
+
 // OptionalStringArrayParam is a helper function that can be used to fetch an optional string array parameter.
 func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error) {
 	// Check if the parameter is present in the request
@@ -116,14 +140,4 @@ func OptionalStringArrayParam(r mcp.CallToolRequest, p string) ([]string, error)
 	default:
 		return []string{}, fmt.Errorf("parameter %s could not be coerced to []string, is %T", p, r.Params.Arguments[p])
 	}
-}
-
-// GetApiKeyFromContext retrieves the Harness API key from the context
-func GetApiKeyFromContext(ctx context.Context) (string, error) {
-	// Retrieve API key from context
-	v, ok := ctx.Value("apiKey").(string)
-	if !ok || v == "" {
-		return "", fmt.Errorf("API key not found in context or empty")
-	}
-	return v, nil
 }

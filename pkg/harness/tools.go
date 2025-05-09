@@ -3,6 +3,8 @@ package harness
 import (
 	"context"
 
+	"github.com/harness/harness-mcp/client"
+	"github.com/harness/harness-mcp/cmd/harness-mcp-server/config"
 	"github.com/harness/harness-mcp/pkg/toolsets"
 )
 
@@ -10,47 +12,24 @@ import (
 var DefaultTools = []string{"all"}
 
 // InitToolsets initializes and returns the toolset groups
-func InitToolsets(passedToolsets []string, readOnly bool) (*toolsets.ToolsetGroup, error) {
-	// Create connector client
-	connectorClient := NewConnectorClient()
+func InitToolsets(client *client.Client, config *config.Config) (*toolsets.ToolsetGroup, error) {
 
 	// Create a toolset group
-	tsg := toolsets.NewToolsetGroup(readOnly)
+	tsg := toolsets.NewToolsetGroup(config.ReadOnly)
 
-	// Create the connectors toolset
-	connectors := toolsets.NewToolset("connectors", "Harness Connector related tools").
+	// Create the pipelines toolset
+	pipelines := toolsets.NewToolset("pipelines", "Harness Pipeline related tools").
 		AddReadTools(
-			toolsets.NewServerTool(ListConnectorsTool(connectorClient)),
-		)
-
-	// Create the repositories toolset
-	repositories := toolsets.NewToolset("repositories", "Harness Repository related tools").
-		AddReadTools(
-			toolsets.NewServerTool(GetRepositoryTool(connectorClient)),
-			toolsets.NewServerTool(ListCommitsTool(connectorClient)),
-			toolsets.NewServerTool(GetCommitTool(connectorClient)),
-		).
-		AddWriteTools(
-			toolsets.NewServerTool(CreateRepositoryTool(connectorClient)),
-		)
-
-	// Create the pull requests toolset
-	pullrequests := toolsets.NewToolset("pullrequests", "Harness Pull Request related tools").
-		AddReadTools(
-			toolsets.NewServerTool(ListPullRequestsTool(connectorClient)),
-			toolsets.NewServerTool(GetPullRequestTool(connectorClient)),
-		).
-		AddWriteTools(
-			toolsets.NewServerTool(CreatePullRequestTool(connectorClient)),
+			toolsets.NewServerTool(ListPipelinesTool(config, client)),
+			toolsets.NewServerTool(GetPipelineTool(config, client)),
 		)
 
 	// Add toolsets to the group
-	tsg.AddToolset(connectors)
-	tsg.AddToolset(repositories)
-	tsg.AddToolset(pullrequests)
+	// tsg.AddToolset(pullrequests)
+	tsg.AddToolset(pipelines)
 
 	// Enable requested toolsets
-	if err := tsg.EnableToolsets(passedToolsets); err != nil {
+	if err := tsg.EnableToolsets(config.Toolsets); err != nil {
 		return nil, err
 	}
 
@@ -60,4 +39,9 @@ func InitToolsets(passedToolsets []string, readOnly bool) (*toolsets.ToolsetGrou
 // SetupContextWithApiKey sets up the context with the API key
 func SetupContextWithApiKey(ctx context.Context, apiKey string) context.Context {
 	return context.WithValue(ctx, "apiKey", apiKey)
+}
+
+// SetupContextWithBearerToken sets up the context with the bearer token
+func SetupContextWithBearerToken(ctx context.Context, bearerToken string) context.Context {
+	return context.WithValue(ctx, "bearerToken", bearerToken)
 }
