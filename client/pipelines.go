@@ -43,16 +43,21 @@ func (p *PipelineService) List(ctx context.Context, scope dto.Scope, opts *dto.P
 	params := make(map[string]string)
 	addScope(scope, params)
 
-	// Set default pagination and add pagination parameters if opts is provided
-	if opts != nil {
-		setDefaultPagination(&opts.PaginationOptions)
-		params["page"] = fmt.Sprintf("%d", opts.Page)
-		params["size"] = fmt.Sprintf("%d", opts.Size)
+	// Handle nil options by creating default options
+	if opts == nil {
+		opts = &dto.PipelineListOptions{}
+	}
 
-		// Add optional parameters if provided
-		if opts.SearchTerm != "" {
-			params["searchTerm"] = opts.SearchTerm
-		}
+	// Set default pagination
+	setDefaultPagination(&opts.PaginationOptions)
+	
+	// Add pagination parameters
+	params["page"] = fmt.Sprintf("%d", opts.Page)
+	params["size"] = fmt.Sprintf("%d", opts.Size)
+
+	// Add optional parameters if provided
+	if opts.SearchTerm != "" {
+		params["searchTerm"] = opts.SearchTerm
 	}
 
 	// Create request body - this is required
@@ -73,12 +78,17 @@ func (p *PipelineService) List(ctx context.Context, scope dto.Scope, opts *dto.P
 }
 
 func (p *PipelineService) ListExecutions(ctx context.Context, scope dto.Scope, opts *dto.PipelineExecutionOptions) (*dto.ListOutput[dto.PipelineExecution], error) {
-	// Set default pagination
-	setDefaultPagination(&opts.PaginationOptions)
-
 	// Prepare query parameters
 	params := make(map[string]string)
 	addScope(scope, params)
+
+	// Handle nil options by creating default options
+	if opts == nil {
+		opts = &dto.PipelineExecutionOptions{}
+	}
+
+	// Set default pagination
+	setDefaultPagination(&opts.PaginationOptions)
 
 	// Add pagination parameters
 	params["page"] = fmt.Sprintf("%d", opts.Page)
