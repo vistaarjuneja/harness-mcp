@@ -1,0 +1,206 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/harness/harness-mcp/client"
+	"github.com/harness/harness-mcp/cmd/harness-mcp-server/config"
+	"github.com/harness/harness-mcp/pkg/harness"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var version = "0.1.0"
+var commit = "dev"
+var date = "unknown"
+
+var (
+	rootCmd = &cobra.Command{
+		Use:     "harness-mcp-server",
+		Short:   "Harness MCP Server",
+		Long:    `A Harness MCP server that handles various tools and resources.`,
+		Version: fmt.Sprintf("Version: %s\nCommit: %s\nBuild Date: %s", version, commit, date),
+	}
+
+	stdioCmd = &cobra.Command{
+		Use:   "stdio",
+		Short: "Start stdio server",
+		Long:  `Start a server that communicates via standard input/output streams using JSON-RPC messages.`,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			token := viper.GetString("api_key")
+			if token == "" {
+				return fmt.Errorf("API key not provided")
+			}
+
+			var toolsets []string
+			err := viper.UnmarshalKey("toolsets", &toolsets)
+			if err != nil {
+				return fmt.Errorf("Failed to unmarshal toolsets: %w", err)
+			}
+
+			cfg := config.Config{
+				Version:     version,
+				BaseURL:     viper.GetString("base_url"),
+				AccountID:   viper.GetString("account_id"),
+				OrgID:       viper.GetString("org_id"),
+				ProjectID:   viper.GetString("project_id"),
+				APIKey:      viper.GetString("api_key"),
+				ReadOnly:    viper.GetBool("read_only"),
+				Toolsets:    toolsets,
+				LogFilePath: viper.GetString("log_file"),
+			}
+
+			if err := runStdioServer(cfg); err != nil {
+				return fmt.Errorf("failed to run stdio server: %w", err)
+			}
+			return nil
+		},
+	}
+)
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.SetVersionTemplate("{{.Short}}\n{{.Version}}\n")
+
+	// Add global flags
+	rootCmd.PersistentFlags().StringSlice("toolsets", harness.DefaultTools, "An optional comma separated list of groups of tools to allow, defaults to enabling all")
+	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
+	rootCmd.PersistentFlags().String("log-file", "", "Path to log file")
+	rootCmd.PersistentFlags().Bool("enable-command-logging", true, "When enabled, the server will log all command requests and responses to the log file")
+	rootCmd.PersistentFlags().String("base-url", "https://app.harness.io", "Base URL for Harness")
+	rootCmd.PersistentFlags().String("api-key", "", "API key for authentication")
+	rootCmd.PersistentFlags().String("account-id", "", "Account ID to use")
+	rootCmd.PersistentFlags().String("org-id", "", "(Optional) org ID to use")
+	rootCmd.PersistentFlags().String("project-id", "", "(Optional) project ID to use")
+
+	// Bind flags to viper
+	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
+	_ = viper.BindPFlag("read_only", rootCmd.PersistentFlags().Lookup("read-only"))
+	_ = viper.BindPFlag("log_file", rootCmd.PersistentFlags().Lookup("log-file"))
+	_ = viper.BindPFlag("enable_command_logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
+	_ = viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("base-url"))
+	_ = viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	_ = viper.BindPFlag("account_id", rootCmd.PersistentFlags().Lookup("account-id"))
+	_ = viper.BindPFlag("org_id", rootCmd.PersistentFlags().Lookup("org-id"))
+	_ = viper.BindPFlag("project_id", rootCmd.PersistentFlags().Lookup("project-id"))
+
+	// Add subcommands
+	rootCmd.AddCommand(stdioCmd)
+}
+
+func initConfig() {
+	// Initialize Viper configuration
+	viper.SetEnvPrefix("harness")
+	viper.AutomaticEnv()
+}
+
+func initLogger(outPath string) error {
+	if outPath == "" {
+		return nil
+	}
+
+	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(file, nil))
+	slog.SetDefault(logger)
+	return nil
+}
+
+type runConfig struct {
+	readOnly        bool
+	logger          *log.Logger
+	logCommands     bool
+	enabledToolsets []string
+}
+
+func runStdioServer(config config.Config) error {
+	// Create app context
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	err := initLogger(config.LogFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+
+	slog.Info("Starting server", "url", config.BaseURL)
+
+	// Define beforeInit function to add client info to user agent
+	beforeInit := func(_ context.Context, _ any, message *mcp.InitializeRequest) {
+		slog.Info("Client connected", "name", message.Params.ClientInfo.Name, "version", message.Params.ClientInfo.Version)
+	}
+
+	// Setup server hooks
+	hooks := &server.Hooks{
+		OnBeforeInitialize: []server.OnBeforeInitializeFunc{beforeInit},
+	}
+
+	// Create server
+	// WithRecovery makes sure panics are logged and don't crash the server
+	harnessServer := harness.NewServer(version, server.WithHooks(hooks), server.WithRecovery())
+
+	client, err := client.NewWithToken(config.BaseURL, config.APIKey)
+	if err != nil {
+		slog.Error("Failed to create client", "error", err)
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+
+	// Initialize toolsets
+	toolsets, err := harness.InitToolsets(client, &config)
+	if err != nil {
+		slog.Error("Failed to initialize toolsets", "error", err)
+	}
+
+	// Register the tools with the server
+	toolsets.RegisterTools(harnessServer)
+
+	// Create stdio server
+	stdioServer := server.NewStdioServer(harnessServer)
+
+	// Set error logger
+	stdioServer.SetErrorLogger(slog.NewLogLogger(slog.Default().Handler(), slog.LevelError))
+
+	// Start listening for messages
+	errC := make(chan error, 1)
+	go func() {
+		in, out := io.Reader(os.Stdin), io.Writer(os.Stdout)
+
+		errC <- stdioServer.Listen(ctx, in, out)
+	}()
+
+	// Output startup message
+	slog.Info("Harness MCP Server running on stdio", "version", version)
+
+	// Wait for shutdown signal
+	select {
+	case <-ctx.Done():
+		slog.Info("shutting down server...")
+	case err := <-errC:
+		if err != nil {
+			slog.Error("error running server", "error", err)
+			return fmt.Errorf("error running server: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}

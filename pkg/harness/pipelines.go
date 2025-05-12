@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
 	"github.com/harness/harness-mcp/client"
 	"github.com/harness/harness-mcp/client/dto"
@@ -67,14 +66,10 @@ func ListPipelinesTool(config *config.Config, client *client.Client) (tool mcp.T
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			slog.Info("request", request)
-
 			page, size, err := fetchPagination(request)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-
-			slog.Info("page", page, "size", size)
 
 			searchTerm, err := OptionalParam[string](request, "search_term")
 			if err != nil {
