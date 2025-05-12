@@ -27,8 +27,15 @@ func InitToolsets(client *client.Client, config *config.Config) (*toolsets.Tools
 			toolsets.NewServerTool(ListExecutionsTool(config, client)),
 		)
 
+	// Create the pull requests toolset
+	pullrequests := toolsets.NewToolset("pullrequests", "Harness Pull Request related tools").
+		AddReadTools(
+			toolsets.NewServerTool(GetPullRequestTool(config, client)),
+			toolsets.NewServerTool(ListPullRequestsTool(config, client)),
+		)
+
 	// Add toolsets to the group
-	// tsg.AddToolset(pullrequests)
+	tsg.AddToolset(pullrequests)
 	tsg.AddToolset(pipelines)
 
 	// Enable requested toolsets

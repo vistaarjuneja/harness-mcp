@@ -10,4 +10,5 @@ type Config struct {
 	ReadOnly    bool
 	Toolsets    []string
 	LogFilePath string
+	Debug       bool
 }

@@ -46,8 +46,6 @@ type Client struct {
 	// TODO: We can abstract out the auth provider
 	APIKey string
 
-	Debug bool
-
 	// Services used for talking to different Harness entities
 	Connectors   *ConnectorService
 	PullRequests *PullRequestService
@@ -77,13 +75,6 @@ func NewWithToken(uri, apiKey string) (*Client, error) {
 	}
 	c.initialize()
 	return c, nil
-}
-
-// SetDebug sets the debug flag. When the debug flag is
-// true, the http.Resposne body to stdout which can be
-// helpful when debugging.
-func (c *Client) SetDebug(debug bool) {
-	c.Debug = debug
 }
 
 func (c *Client) initialize() error {
@@ -144,15 +135,18 @@ func (c *Client) Get(
 		return err
 	}
 
-	var respBody string
-	if unmarshalErr := unmarshalResponse(resp, response); unmarshalErr != nil {
-		body, _ := io.ReadAll(resp.Body)
-		respBody = string(body)
-		return fmt.Errorf("response body unmarshal error: %w - original response: %s", unmarshalErr, respBody)
+	// Try to unmarshal the response
+	if err := unmarshalResponse(resp, response); err != nil {
+		// If we already have a status code error, wrap it with the unmarshal error
+		if statusErr := mapStatusCodeToError(resp.StatusCode); statusErr != nil {
+			return fmt.Errorf("%w: %v", statusErr, err)
+		}
+		return err
 	}
 
+	// Return any status code error if present
 	if err != nil {
-		return fmt.Errorf("%w - response body: %s", err, respBody)
+		return err
 	}
 
 	return err
@@ -281,9 +275,18 @@ func unmarshalResponse(resp *http.Response, data interface{}) error {
 		return fmt.Errorf("error reading response body : %w", err)
 	}
 
+	// For non-success status codes, try to unmarshal as an error response first
+	if resp.StatusCode >= 400 {
+		var errResp dto.ErrorResponse
+		if jsonErr := json.Unmarshal(body, &errResp); jsonErr == nil && (errResp.Code != "" || errResp.Message != "") {
+			return fmt.Errorf("API error: %s", errResp.Message)
+		}
+		// If we couldn't parse it as an error response, continue with normal unmarshaling
+	}
+
 	err = json.Unmarshal(body, data)
 	if err != nil {
-		return fmt.Errorf("error deserializing response body : %w", err)
+		return fmt.Errorf("error deserializing response body : %w - original response: %s", err, string(body))
 	}
 
 	return nil

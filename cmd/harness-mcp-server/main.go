@@ -57,6 +57,7 @@ var (
 				ReadOnly:    viper.GetBool("read_only"),
 				Toolsets:    toolsets,
 				LogFilePath: viper.GetString("log_file"),
+				Debug:       viper.GetBool("debug"),
 			}
 
 			if err := runStdioServer(cfg); err != nil {
@@ -76,7 +77,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSlice("toolsets", harness.DefaultTools, "An optional comma separated list of groups of tools to allow, defaults to enabling all")
 	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
 	rootCmd.PersistentFlags().String("log-file", "", "Path to log file")
-	rootCmd.PersistentFlags().Bool("enable-command-logging", true, "When enabled, the server will log all command requests and responses to the log file")
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().String("base-url", "https://app.harness.io", "Base URL for Harness")
 	rootCmd.PersistentFlags().String("api-key", "", "API key for authentication")
 	rootCmd.PersistentFlags().String("account-id", "", "Account ID to use")
@@ -87,7 +88,7 @@ func init() {
 	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
 	_ = viper.BindPFlag("read_only", rootCmd.PersistentFlags().Lookup("read-only"))
 	_ = viper.BindPFlag("log_file", rootCmd.PersistentFlags().Lookup("log-file"))
-	_ = viper.BindPFlag("enable_command_logging", rootCmd.PersistentFlags().Lookup("enable-command-logging"))
+	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	_ = viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("base-url"))
 	_ = viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
 	_ = viper.BindPFlag("account_id", rootCmd.PersistentFlags().Lookup("account-id"))
@@ -104,7 +105,7 @@ func initConfig() {
 	viper.AutomaticEnv()
 }
 
-func initLogger(outPath string) error {
+func initLogger(outPath string, debug bool) error {
 	if outPath == "" {
 		return nil
 	}
@@ -114,7 +115,12 @@ func initLogger(outPath string) error {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(file, nil))
+	handlerOpts := &slog.HandlerOptions{}
+	if debug {
+		handlerOpts.Level = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(file, handlerOpts))
 	slog.SetDefault(logger)
 	return nil
 }
@@ -131,7 +137,7 @@ func runStdioServer(config config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	err := initLogger(config.LogFilePath)
+	err := initLogger(config.LogFilePath, config.Debug)
 	if err != nil {
 		return fmt.Errorf("failed to initialize logger: %w", err)
 	}

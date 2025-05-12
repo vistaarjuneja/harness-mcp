@@ -1,0 +1,214 @@
+package harness
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/harness/harness-mcp/client"
+	"github.com/harness/harness-mcp/client/dto"
+	"github.com/harness/harness-mcp/cmd/harness-mcp-server/config"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+)
+
+// GetPullRequestTool creates a tool for getting a specific pull request
+func GetPullRequestTool(config *config.Config, client *client.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("get_pull_request",
+			mcp.WithDescription("Get details of a specific pull request in a Harness repository."),
+			mcp.WithString("repo_id",
+				mcp.Required(),
+				mcp.Description("The ID of the repository"),
+			),
+			mcp.WithNumber("pr_number",
+				mcp.Required(),
+				mcp.Description("The number of the pull request"),
+			),
+			WithScope(config, true),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			repoID, err := requiredParam[string](request, "repo_id")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			prNumberFloat, err := requiredParam[float64](request, "pr_number")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			prNumber := int(prNumberFloat)
+
+			scope, err := fetchScope(config, request, true)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			data, err := client.PullRequests.Get(ctx, scope, repoID, prNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get pull request: %w", err)
+			}
+
+			r, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal pull request: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
+// ListPullRequestsTool creates a tool for listing pull requests
+// TODO: more options can be added (sort, order, timestamps, etc)
+func ListPullRequestsTool(config *config.Config, client *client.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("list_pull_requests",
+			mcp.WithDescription("List pull requests in a Harness repository."),
+			mcp.WithString("repo_id",
+				mcp.Required(),
+				mcp.Description("The ID of the repository"),
+			),
+			mcp.WithString("state",
+				mcp.Description("Optional comma-separated states to filter pull requests (possible values: open,closed,merged)"),
+			),
+			mcp.WithString("source_branch",
+				mcp.Description("Optional source branch to filter pull requests"),
+			),
+			mcp.WithString("target_branch",
+				mcp.Description("Optional target branch to filter pull requests"),
+			),
+			mcp.WithString("query",
+				mcp.Description("Optional search query to filter pull requests"),
+			),
+			mcp.WithBoolean("include_checks",
+				mcp.Description("Optional flag to include CI check information for builds ran in the PR"),
+			),
+			mcp.WithNumber("page",
+				mcp.Description("Page number for pagination"),
+			),
+			mcp.WithNumber("limit",
+				mcp.Description("Number of items per page"),
+			),
+			WithScope(config, true),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			repoID, err := requiredParam[string](request, "repo_id")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			scope, err := fetchScope(config, request, true)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			opts := &dto.PullRequestOptions{}
+
+			// Handle pagination
+			page, err := OptionalParam[float64](request, "page")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if page > 0 {
+				opts.Page = int(page)
+			}
+
+			limit, err := OptionalParam[float64](request, "limit")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if limit > 0 {
+				opts.Limit = int(limit)
+			}
+
+			// Handle other optional parameters
+			stateStr, err := OptionalParam[string](request, "state")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if stateStr != "" {
+				opts.State = parseCommaSeparatedList(stateStr)
+			}
+
+			sourceBranch, err := OptionalParam[string](request, "source_branch")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if sourceBranch != "" {
+				opts.SourceBranch = sourceBranch
+			}
+
+			targetBranch, err := OptionalParam[string](request, "target_branch")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if targetBranch != "" {
+				opts.TargetBranch = targetBranch
+			}
+
+			query, err := OptionalParam[string](request, "query")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if query != "" {
+				opts.Query = query
+			}
+
+			authorIDStr, err := OptionalParam[string](request, "author_id")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			if authorIDStr != "" {
+				authorID, err := strconv.Atoi(authorIDStr)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("invalid author_id: %s", authorIDStr)), nil
+				}
+				opts.AuthorID = authorID
+			}
+
+			includeChecks, err := OptionalParam[bool](request, "include_checks")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			opts.IncludeChecks = includeChecks
+
+			data, err := client.PullRequests.List(ctx, scope, repoID, opts)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list pull requests: %w", err)
+			}
+
+			r, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal pull request list: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
+// Helper function to parse comma-separated list
+func parseCommaSeparatedList(input string) []string {
+	if input == "" {
+		return nil
+	}
+	return splitAndTrim(input, ",")
+}
+
+// splitAndTrim splits a string by the given separator and trims spaces from each element
+func splitAndTrim(s, sep string) []string {
+	if s == "" {
+		return nil
+	}
+
+	parts := strings.Split(s, sep)
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
+}
