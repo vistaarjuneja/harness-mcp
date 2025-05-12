@@ -32,31 +32,33 @@ func WithScope(config *config.Config, required bool) mcp.ToolOption {
 }
 
 // fetchScope fetches the scope from the config and MCP request.
-// It looks in the config first and then in the request (if it was defined).
+// It looks in the config first and then in the request (if it was defined). The request is given preference
+// so anything passed by the user in the request will override the config.
 // If orgID and projectID are required fields, it will return an error if they are not present.
 func fetchScope(config *config.Config, request mcp.CallToolRequest, required bool) (dto.Scope, error) {
-	scope := dto.Scope{}
 	// account ID is always required
 	if config.AccountID == "" {
-		return scope, fmt.Errorf("account ID is required")
+		return dto.Scope{}, fmt.Errorf("account ID is required")
 	}
-	scope.AccountID = config.AccountID
-	// org ID and project ID may or may not be required for APIs. If they are required, we return an error
-	// if not present.
-	scope.OrgID = config.OrgID
-	scope.ProjectID = config.ProjectID
 
-	if scope.OrgID == "" {
-		// try to fetch it from the MCP request
-		org, _ := OptionalParam[string](request, "org_id")
+	scope := dto.Scope{
+		AccountID: config.AccountID,
+		OrgID:     config.OrgID,
+		ProjectID: config.ProjectID,
+	}
+
+	// try to fetch it from the MCP request
+	org, _ := OptionalParam[string](request, "org_id")
+	if org != "" {
 		scope.OrgID = org
 	}
-	if scope.ProjectID == "" {
-		// try to fetch it from the MCP request
-		project, _ := OptionalParam[string](request, "project_id")
+	project, _ := OptionalParam[string](request, "project_id")
+	if project != "" {
 		scope.ProjectID = project
 	}
 
+	// org ID and project ID may or may not be required for APIs. If they are required, we return an error
+	// if not present.
 	if required {
 		if scope.OrgID == "" || scope.ProjectID == "" {
 			return scope, fmt.Errorf("org ID and project ID are required")
