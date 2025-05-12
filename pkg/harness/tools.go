@@ -34,9 +34,17 @@ func InitToolsets(client *client.Client, config *config.Config) (*toolsets.Tools
 			toolsets.NewServerTool(ListPullRequestsTool(config, client)),
 		)
 
+	// Create the repositories toolset
+	repositories := toolsets.NewToolset("repositories", "Harness Repository related tools").
+		AddReadTools(
+			toolsets.NewServerTool(GetRepositoryTool(config, client)),
+			toolsets.NewServerTool(ListRepositoriesTool(config, client)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(pullrequests)
 	tsg.AddToolset(pipelines)
+	tsg.AddToolset(repositories)
 
 	// Enable requested toolsets
 	if err := tsg.EnableToolsets(config.Toolsets); err != nil {

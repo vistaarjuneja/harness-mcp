@@ -16,18 +16,16 @@ func WithScope(config *config.Config, required bool) mcp.ToolOption {
 		opt = mcp.Required()
 	}
 	return func(tool *mcp.Tool) {
-		if config.OrgID == "" {
-			mcp.WithString("org_id",
-				mcp.Description("The ID of the organization."),
-				opt,
-			)
-		}
-		if config.ProjectID == "" {
-			mcp.WithString("project_id",
-				mcp.Description("The ID of the project."),
-				opt,
-			)
-		}
+		mcp.WithString("org_id",
+			mcp.Description("The ID of the organization."),
+			mcp.DefaultString(config.OrgID),
+			opt,
+		)
+		mcp.WithString("project_id",
+			mcp.Description("The ID of the project."),
+			mcp.DefaultString(config.ProjectID),
+			opt,
+		)
 	}
 }
 
