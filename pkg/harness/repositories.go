@@ -66,6 +66,7 @@ func ListRepositoriesTool(config *config.Config, client *client.Client) (tool mc
 			),
 			mcp.WithNumber("limit",
 				mcp.DefaultNumber(5),
+				mcp.Max(20),
 				mcp.Description("Number of items per page"),
 			),
 			WithScope(config, false),
