@@ -16,7 +16,7 @@ func WithPagination() mcp.ToolOption {
 
 // fetchPagination fetches pagination parameters from the MCP request.
 func fetchPagination(request mcp.CallToolRequest) (page, size int, err error) {
-	pageVal, err := OptionalIntParamWithDefault(request, "page", 1)
+	pageVal, err := OptionalIntParamWithDefault(request, "page", 0)
 	if err != nil {
 		return 0, 0, err
 	}

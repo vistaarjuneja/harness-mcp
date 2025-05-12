@@ -22,6 +22,9 @@ func InitToolsets(client *client.Client, config *config.Config) (*toolsets.Tools
 		AddReadTools(
 			toolsets.NewServerTool(ListPipelinesTool(config, client)),
 			toolsets.NewServerTool(GetPipelineTool(config, client)),
+			toolsets.NewServerTool(FetchExecutionURLTool(config, client)),
+			toolsets.NewServerTool(GetExecutionTool(config, client)),
+			toolsets.NewServerTool(ListExecutionsTool(config, client)),
 		)
 
 	// Add toolsets to the group

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,6 +21,7 @@ var (
 	defaultBaseURL = "https://app.harness.io/"
 
 	defaultPageSize = 5
+	maxPageSize     = 20
 
 	apiKeyHeader = "x-api-key"
 )
@@ -248,6 +250,7 @@ func (c *Client) PostRaw(
 
 // Do is a wrapper of http.Client.Do that injects the auth header in the request.
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
+	slog.Debug("Request", "method", r.Method, "url", r.URL.String())
 	r.Header.Add(apiKeyHeader, c.APIKey)
 
 	return c.client.Do(r)
@@ -334,6 +337,13 @@ func addScope(scope dto.Scope, params map[string]string) {
 
 func setDefaultPagination(opts *dto.PaginationOptions) {
 	if opts != nil {
-		opts.Size = defaultPageSize
+		if opts.Size == 0 {
+			opts.Size = defaultPageSize
+		}
+		// too many entries will lower the quality of responses
+		// can be tweaked later based on feedback
+		if opts.Size > maxPageSize {
+			opts.Size = maxPageSize
+		}
 	}
 }

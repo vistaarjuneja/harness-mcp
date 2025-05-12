@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	pipelinePath          = "pipeline/api/pipelines/%s"
-	pipelineListPath      = "pipeline/api/pipelines/list"
-	pipelineExecutionPath = "pipeline/api/pipelines/execution/url"
+	pipelinePath                 = "pipeline/api/pipelines/%s"
+	pipelineListPath             = "pipeline/api/pipelines/list"
+	pipelineExecutionPath        = "pipeline/api/pipelines/execution/url"
+	pipelineExecutionGetPath     = "pipeline/api/pipelines/execution/v2/%s"
+	pipelineExecutionSummaryPath = "pipeline/api/pipelines/execution/summary"
 )
 
 type PipelineService struct {
@@ -71,8 +73,76 @@ func (p *PipelineService) List(ctx context.Context, scope dto.Scope, opts *dto.P
 }
 
 func (p *PipelineService) ListExecutions(ctx context.Context, scope dto.Scope, opts *dto.PipelineExecutionOptions) (*dto.ListOutput[dto.PipelineExecution], error) {
+	// Set default pagination
 	setDefaultPagination(&opts.PaginationOptions)
-	return nil, nil
+
+	// Prepare query parameters
+	params := make(map[string]string)
+	addScope(scope, params)
+
+	// Add pagination parameters
+	params["page"] = fmt.Sprintf("%d", opts.Page)
+	params["size"] = fmt.Sprintf("%d", opts.Size)
+
+	// Add optional parameters if provided
+	if opts.SearchTerm != "" {
+		params["searchTerm"] = opts.SearchTerm
+	}
+	if opts.PipelineIdentifier != "" {
+		params["pipelineIdentifier"] = opts.PipelineIdentifier
+	}
+	if opts.Status != "" {
+		params["status"] = opts.Status
+	}
+	if opts.Branch != "" {
+		params["branch"] = opts.Branch
+	}
+	if opts.MyDeployments {
+		params["myDeployments"] = "true"
+	} else {
+		params["showAllExecutions"] = "false"
+	}
+
+	// Create request body with filter type and tags if needed
+	requestBody := map[string]interface{}{
+		"filterType": "PipelineExecution",
+	}
+	// Initialize the response object
+	response := &dto.ListOutput[dto.PipelineExecution]{}
+
+	// Make the POST request
+	err := p.client.Post(ctx, pipelineExecutionSummaryPath, params, requestBody, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pipeline executions: %w", err)
+	}
+
+	return response, nil
+}
+
+// GetExecution retrieves details of a specific pipeline execution
+func (p *PipelineService) GetExecution(ctx context.Context, scope dto.Scope, planExecutionID string) (*dto.Entity[dto.PipelineExecution], error) {
+	path := fmt.Sprintf(pipelineExecutionGetPath, planExecutionID)
+
+	// Prepare query parameters
+	params := make(map[string]string)
+	addScope(scope, params)
+
+	// Initialize the response object with the new structure that matches the API response
+	response := &dto.Entity[dto.PipelineExecutionResponse]{}
+
+	// Make the GET request
+	err := p.client.Get(ctx, path, params, map[string]string{}, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get execution details: %w", err)
+	}
+
+	// Extract the execution details from the nested structure
+	result := &dto.Entity[dto.PipelineExecution]{
+		Status: response.Status,
+		Data:   response.Data.PipelineExecutionSummary,
+	}
+
+	return result, nil
 }
 
 func (p *PipelineService) FetchExecutionURL(ctx context.Context, scope dto.Scope, pipelineID, planExecutionID string) (string, error) {
@@ -87,8 +157,8 @@ func (p *PipelineService) FetchExecutionURL(ctx context.Context, scope dto.Scope
 	// Initialize the response object
 	urlResponse := &dto.Entity[string]{}
 
-	// Make the GET request
-	err := p.client.Get(ctx, path, params, nil, urlResponse)
+	// Make the POST request
+	err := p.client.Post(ctx, path, params, nil, urlResponse)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch execution URL: %w", err)
 	}

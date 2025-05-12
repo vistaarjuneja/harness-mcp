@@ -110,41 +110,53 @@ type PageableInfo struct {
 	PageNumber int      `json:"pageNumber,omitempty"`
 }
 
+// PipelineTag represents a key-value tag for filtering pipelines
+type PipelineTag struct {
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
 // PipelineExecutionOptions represents the options for listing pipeline executions
 type PipelineExecutionOptions struct {
 	PaginationOptions
-	Status             string `json:"status,omitempty"`
-	MyDeployments      bool   `json:"myDeployments,omitempty"`
-	Branch             string `json:"branch,omitempty"`
-	SearchTerm         string `json:"searchTerm,omitempty"`
-	PipelineIdentifier string `json:"pipelineIdentifier,omitempty"`
+	Status             string        `json:"status,omitempty"`
+	MyDeployments      bool          `json:"myDeployments,omitempty"`
+	Branch             string        `json:"branch,omitempty"`
+	SearchTerm         string        `json:"searchTerm,omitempty"`
+	PipelineIdentifier string        `json:"pipelineIdentifier,omitempty"`
+	PipelineTags       []PipelineTag `json:"pipelineTags,omitempty"`
+}
+
+// PipelineExecutionResponse represents the full response structure for pipeline execution details
+type PipelineExecutionResponse struct {
+	PipelineExecutionSummary PipelineExecution `json:"pipelineExecutionSummary,omitempty"`
 }
 
 // PipelineExecution represents a pipeline execution
 type PipelineExecution struct {
-	PipelineIdentifier      string               `json:"pipelineIdentifier,omitempty"`
-	ProjectIdentifier       string               `json:"projectIdentifier,omitempty"`
-	OrgIdentifier           string               `json:"orgIdentifier,omitempty"`
-	PlanExecutionId         string               `json:"planExecutionId,omitempty"`
-	Name                    string               `json:"name,omitempty"`
-	Status                  string               `json:"status,omitempty"`
-	FailureInfo             ExecutionFailureInfo `json:"failureInfo,omitempty"`
-	StartTs                 int64                `json:"startTs,omitempty"`
-	EndTs                   int64                `json:"endTs,omitempty"`
-	CreatedAt               int64                `json:"createdAt,omitempty"`
-	ConnectorRef            string               `json:"connectorRef,omitempty"`
-	SuccessfulStagesCount   int                  `json:"successfulStagesCount,omitempty"`
-	FailedStagesCount       int                  `json:"failedStagesCount,omitempty"`
-	RunningStagesCount      int                  `json:"runningStagesCount,omitempty"`
-	TotalStagesRunningCount int                  `json:"totalStagesRunningCount,omitempty"`
-	StagesExecuted          []string             `json:"stagesExecuted,omitempty"`
-	AbortedBy               User                 `json:"abortedBy,omitempty"`
-	QueuedType              string               `json:"queuedType,omitempty"`
-	RunSequence             int32                `json:"runSequence,omitempty"`
+	PipelineIdentifier         string               `json:"pipelineIdentifier,omitempty"`
+	ProjectIdentifier          string               `json:"projectIdentifier,omitempty"`
+	OrgIdentifier              string               `json:"orgIdentifier,omitempty"`
+	PlanExecutionId            string               `json:"planExecutionId,omitempty"`
+	Name                       string               `json:"name,omitempty"`
+	Status                     string               `json:"status,omitempty"`
+	FailureInfo                ExecutionFailureInfo `json:"failureInfo,omitempty"`
+	StartTs                    int64                `json:"startTs,omitempty"`
+	EndTs                      int64                `json:"endTs,omitempty"`
+	CreatedAt                  int64                `json:"createdAt,omitempty"`
+	ConnectorRef               string               `json:"connectorRef,omitempty"`
+	SuccessfulStagesCount      int                  `json:"successfulStagesCount,omitempty"`
+	FailedStagesCount          int                  `json:"failedStagesCount,omitempty"`
+	RunningStagesCount         int                  `json:"runningStagesCount,omitempty"`
+	TotalStagesRunningCount    int                  `json:"totalStagesRunningCount,omitempty"`
+	StagesExecuted             []string             `json:"stagesExecuted,omitempty"`
+	AbortedBy                  User                 `json:"abortedBy,omitempty"`
+	QueuedType                 string               `json:"queuedType,omitempty"`
+	RunSequence                int32                `json:"runSequence,omitempty"`
+	ShouldUseSimplifiedBaseKey bool                 `json:"shouldUseSimplifiedBaseKey,omitempty"`
 }
 
 // ExecutionFailureInfo represents the failure information of a pipeline execution
-
 type ExecutionFailureInfo struct {
 	FailureTypeList  []string                   `json:"failureTypeList,omitempty"`
 	ResponseMessages []ExecutionResponseMessage `json:"responseMessages,omitempty"`
