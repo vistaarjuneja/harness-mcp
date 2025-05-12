@@ -20,6 +20,9 @@ import (
 var (
 	defaultBaseURL = "https://app.harness.io/"
 
+	// these can be moved to a level above if we want to make this a generic
+	// client, keeping these here to ensure we don't end up returning too much info
+	// when different tools get added.
 	defaultPageSize = 5
 	maxPageSize     = 20
 
