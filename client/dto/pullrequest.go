@@ -92,6 +92,53 @@ type CreatePullRequest struct {
 	IsDraft      bool   `json:"is_draft,omitempty"`
 }
 
+// PullRequestCheckPayload represents the payload for a pull request check
+type PullRequestCheckPayload struct {
+	Data    interface{} `json:"data"`
+	Kind    string      `json:"kind"`
+	Version string      `json:"version,omitempty"`
+}
+
+// PullRequestCheckReporter represents the entity that reported a check
+type PullRequestCheckReporter struct {
+	Created     int64  `json:"created,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	Email       string `json:"email,omitempty"`
+	ID          int    `json:"id,omitempty"`
+	Type        string `json:"type,omitempty"`
+	UID         string `json:"uid,omitempty"`
+	Updated     int64  `json:"updated,omitempty"`
+}
+
+// PullRequestCheck represents a status check for a pull request
+type PullRequestCheck struct {
+	Created    int64                  `json:"created,omitempty"`
+	Ended      int64                  `json:"ended,omitempty"`
+	ID         int                    `json:"id,omitempty"`
+	Identifier string                 `json:"identifier,omitempty"`
+	Link       string                 `json:"link,omitempty"`
+	Metadata   interface{}            `json:"metadata"`
+	Payload    PullRequestCheckPayload `json:"payload,omitempty"`
+	ReportedBy PullRequestCheckReporter `json:"reported_by,omitempty"`
+	Started    int64                  `json:"started,omitempty"`
+	Status     string                 `json:"status,omitempty"`
+	Summary    string                 `json:"summary,omitempty"`
+	Updated    int64                  `json:"updated,omitempty"`
+}
+
+// PullRequestCheckInfo represents a check with additional information
+type PullRequestCheckInfo struct {
+	Bypassable bool             `json:"bypassable,omitempty"`
+	Check      PullRequestCheck `json:"check,omitempty"`
+	Required   bool             `json:"required,omitempty"`
+}
+
+// PullRequestChecksResponse represents the response from the checks API
+type PullRequestChecksResponse struct {
+	Checks    []PullRequestCheckInfo `json:"checks,omitempty"`
+	CommitSha string                `json:"commit_sha,omitempty"`
+}
+
 // PullRequestOptions represents the options for listing pull requests
 type PullRequestOptions struct {
 	State         []string `json:"state,omitempty"`

@@ -215,6 +215,51 @@ func splitAndTrim(s, sep string) []string {
 	return result
 }
 
+// GetPullRequestChecksTool creates a tool for getting pull request status checks
+func GetPullRequestChecksTool(config *config.Config, client *client.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("get_pull_request_checks",
+			mcp.WithDescription("Get status checks for a specific pull request in a Harness repository."),
+			mcp.WithString("repo_identifier",
+				mcp.Required(),
+				mcp.Description("The identifier of the repository"),
+			),
+			mcp.WithNumber("pr_number",
+				mcp.Required(),
+				mcp.Description("The number of the pull request"),
+			),
+			WithScope(config, false),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			repoIdentifier, err := requiredParam[string](request, "repo_identifier")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			prNumberFloat, err := requiredParam[float64](request, "pr_number")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			prNumber := int(prNumberFloat)
+
+			scope, err := fetchScope(config, request, false)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			data, err := client.PullRequests.GetChecks(ctx, scope, repoIdentifier, prNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get pull request checks: %w", err)
+			}
+
+			r, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal pull request checks: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}
+
 // CreatePullRequestTool creates a tool for creating a new pull request
 func CreatePullRequestTool(config *config.Config, client *client.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool("create_pull_request",

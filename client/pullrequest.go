@@ -13,6 +13,7 @@ const (
 	pullRequestGetPath    = pullRequestBasePath + "/%s/pullreq/%d"
 	pullRequestListPath   = pullRequestBasePath + "/%s/pullreq"
 	pullRequestCreatePath = pullRequestBasePath + "/%s/pullreq"
+	pullRequestChecksPath = pullRequestBasePath + "/%s/pullreq/%d/checks"
 )
 
 type PullRequestService struct {
@@ -139,4 +140,19 @@ func (p *PullRequestService) Create(ctx context.Context, scope dto.Scope, repoID
 	}
 
 	return pr, nil
+}
+
+// GetChecks retrieves the status checks for a specific pull request
+func (p *PullRequestService) GetChecks(ctx context.Context, scope dto.Scope, repoID string, prNumber int) (*dto.PullRequestChecksResponse, error) {
+	path := fmt.Sprintf(pullRequestChecksPath, repoID, prNumber)
+	params := make(map[string]string)
+	addScope(scope, params)
+
+	checks := new(dto.PullRequestChecksResponse)
+	err := p.client.Get(ctx, path, params, nil, checks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pull request checks: %w", err)
+	}
+
+	return checks, nil
 }

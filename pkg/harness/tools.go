@@ -32,6 +32,7 @@ func InitToolsets(client *client.Client, config *config.Config) (*toolsets.Tools
 		AddReadTools(
 			toolsets.NewServerTool(GetPullRequestTool(config, client)),
 			toolsets.NewServerTool(ListPullRequestsTool(config, client)),
+			toolsets.NewServerTool(GetPullRequestChecksTool(config, client)),
 		).
 		AddWriteTools(
 			toolsets.NewServerTool(CreatePullRequestTool(config, client)),
