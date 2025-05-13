@@ -101,7 +101,8 @@ To use the Harness MCP Server with Windsurf:
         "HARNESS_API_KEY": "<YOUR_API_KEY>",
         "HARNESS_ACCOUNT_ID": "<YOUR_ACCOUNT_ID>",
         "HARNESS_ORG_ID": "<YOUR_ORG_ID>",
-        "HARNESS_PROJECT_ID": "<YOUR_PROJECT_ID>"
+        "HARNESS_PROJECT_ID": "<YOUR_PROJECT_ID>",
+        "HARNESS_BASE_URL": "<YOUR_BASE_URL>",
       }
     }
   }
