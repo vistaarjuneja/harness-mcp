@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	pullRequestBasePath = "code/api/v1/repos"
-	pullRequestGetPath  = pullRequestBasePath + "/%s/pullreq/%d"
-	pullRequestListPath = pullRequestBasePath + "/%s/pullreq"
+	pullRequestBasePath   = "code/api/v1/repos"
+	pullRequestGetPath    = pullRequestBasePath + "/%s/pullreq/%d"
+	pullRequestListPath   = pullRequestBasePath + "/%s/pullreq"
+	pullRequestCreatePath = pullRequestBasePath + "/%s/pullreq"
 )
 
 type PullRequestService struct {
@@ -119,4 +120,23 @@ func (p *PullRequestService) List(ctx context.Context, scope dto.Scope, repoID s
 	}
 
 	return prs, nil
+}
+
+// Create creates a new pull request in the specified repository
+func (p *PullRequestService) Create(ctx context.Context, scope dto.Scope, repoID string, createPR *dto.CreatePullRequest) (*dto.PullRequest, error) {
+	path := fmt.Sprintf(pullRequestCreatePath, repoID)
+	params := make(map[string]string)
+	addScope(scope, params)
+
+	if createPR == nil {
+		createPR = &dto.CreatePullRequest{}
+	}
+
+	pr := new(dto.PullRequest)
+	err := p.client.Post(ctx, path, params, createPR, pr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+
+	return pr, nil
 }

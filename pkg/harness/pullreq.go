@@ -214,3 +214,90 @@ func splitAndTrim(s, sep string) []string {
 
 	return result
 }
+
+// CreatePullRequestTool creates a tool for creating a new pull request
+func CreatePullRequestTool(config *config.Config, client *client.Client) (tool mcp.Tool, handler server.ToolHandlerFunc) {
+	return mcp.NewTool("create_pull_request",
+			mcp.WithDescription("Create a new pull request in a Harness repository."),
+			mcp.WithString("repo_identifier",
+				mcp.Required(),
+				mcp.Description("The identifier of the repository"),
+			),
+			mcp.WithString("title",
+				mcp.Required(),
+				mcp.Description("The title of the pull request"),
+			),
+			mcp.WithString("description",
+				mcp.Description("The description of the pull request"),
+			),
+			mcp.WithString("source_branch",
+				mcp.Required(),
+				mcp.Description("The source branch for the pull request"),
+			),
+			mcp.WithString("target_branch",
+				mcp.Description("The target branch for the pull request"),
+				mcp.DefaultString("main"),
+			),
+			mcp.WithBoolean("is_draft",
+				mcp.Description("Whether the pull request should be created as a draft"),
+				mcp.DefaultBool(false),
+			),
+			WithScope(config, false),
+		),
+		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			repoIdentifier, err := requiredParam[string](request, "repo_identifier")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			title, err := requiredParam[string](request, "title")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			description, err := OptionalParam[string](request, "description")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			sourceBranch, err := requiredParam[string](request, "source_branch")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			isDraft, err := OptionalParam[bool](request, "is_draft")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			targetBranch, err := OptionalParam[string](request, "target_branch")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			scope, err := fetchScope(config, request, false)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			createRequest := &dto.CreatePullRequest{
+				Title:        title,
+				SourceBranch: sourceBranch,
+				TargetBranch: targetBranch,
+				IsDraft:      isDraft,
+				Description:  description,
+			}
+
+			data, err := client.PullRequests.Create(ctx, scope, repoIdentifier, createRequest)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create pull request: %w", err)
+			}
+
+			r, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal pull request: %w", err)
+			}
+
+			return mcp.NewToolResultText(string(r)), nil
+		}
+}

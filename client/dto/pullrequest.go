@@ -83,6 +83,15 @@ type PullRequestStats struct {
 	UnresolvedCount int `json:"unresolved_count,omitempty"`
 }
 
+// CreatePullRequest represents the request body for creating a new pull request
+type CreatePullRequest struct {
+	Title        string `json:"title"`
+	Description  string `json:"description,omitempty"`
+	SourceBranch string `json:"source_branch"`
+	TargetBranch string `json:"target_branch,omitempty"`
+	IsDraft      bool   `json:"is_draft,omitempty"`
+}
+
 // PullRequestOptions represents the options for listing pull requests
 type PullRequestOptions struct {
 	State         []string `json:"state,omitempty"`
