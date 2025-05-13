@@ -6,10 +6,14 @@ import "github.com/mark3labs/mcp-go/mcp"
 func WithPagination() mcp.ToolOption {
 	return func(tool *mcp.Tool) {
 		mcp.WithNumber("page",
-			mcp.Description("Page number for pagination"),
+			mcp.Description("Page number for pagination - page 0 is the first page"),
+			mcp.Min(0),
+			mcp.DefaultNumber(0),
 		)(tool)
 		mcp.WithNumber("size",
 			mcp.Description("Number of items per page"),
+			mcp.DefaultNumber(5),
+			mcp.Max(20),
 		)(tool)
 	}
 }
@@ -23,7 +27,6 @@ func fetchPagination(request mcp.CallToolRequest) (page, size int, err error) {
 	if pageVal != 0 {
 		page = int(pageVal)
 	}
-
 	sizeVal, err := OptionalIntParamWithDefault(request, "size", 5)
 	if err != nil {
 		return 0, 0, err

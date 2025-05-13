@@ -41,10 +41,17 @@ func InitToolsets(client *client.Client, config *config.Config) (*toolsets.Tools
 			toolsets.NewServerTool(ListRepositoriesTool(config, client)),
 		)
 
+	// Create the logs toolset
+	logs := toolsets.NewToolset("logs", "Harness Logs related tools").
+		AddReadTools(
+			toolsets.NewServerTool(FetchLogDownloadURLTool(config, client)),
+		)
+
 	// Add toolsets to the group
 	tsg.AddToolset(pullrequests)
 	tsg.AddToolset(pipelines)
 	tsg.AddToolset(repositories)
+	tsg.AddToolset(logs)
 
 	// Enable requested toolsets
 	if err := tsg.EnableToolsets(config.Toolsets); err != nil {

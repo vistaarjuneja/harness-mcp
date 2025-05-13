@@ -51,6 +51,7 @@ type Client struct {
 	PullRequests *PullRequestService
 	Pipelines    *PipelineService
 	Repositories *RepositoryService
+	Logs         *LogService
 }
 
 type service struct {
@@ -94,6 +95,7 @@ func (c *Client) initialize() error {
 	c.PullRequests = &PullRequestService{client: c}
 	c.Pipelines = &PipelineService{client: c}
 	c.Repositories = &RepositoryService{client: c}
+	c.Logs = &LogService{client: c}
 
 	return nil
 }
