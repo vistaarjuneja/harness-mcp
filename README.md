@@ -30,7 +30,7 @@ The server implements several toolsets:
 
 ## Prerequisites
 
-1. You will need to have Go 1.23 or later installed on your system.
+1. You will need to have Go 1.22 or later installed on your system.
 2. A Harness API key for authentication.
 
 ## Quickstart
@@ -78,12 +78,6 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
   }
   ```
 </details>
-
-## Usage with Claude Code
-
-```bash
-HARNESS_API_KEY=your_api_key HARNESS_ACCOUNT_ID=your_account_id HARNESS_ORG_ID=your_org_id HARNESS_PROJECT_ID=your_project_id ./cmd/harness-mcp-server/harness-mcp-server stdio
-```
 
 ## Usage with Windsurf
 
@@ -152,7 +146,3 @@ npx @modelcontextprotocol/inspector /path/to/harness-mcp-server stdio
 ```
 
 Upon launching, the Inspector will display a URL that you can access in your browser to begin debugging.
-
-## To do
-
-Add Docker image for easier use
